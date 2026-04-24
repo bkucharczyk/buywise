@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: buywise-backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+      - redis
+      - qdrant
+      - r2r
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: buywise-worker
+    command: celery -A app.celery_app.celery_app worker --loglevel=INFO
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - redis
+      - r2r
+
+  mongodb:
+    image: mongo:7
+    container_name: buywise-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    container_name: buywise-redis
+    ports:
+      - "6379:6379"
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: buywise-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  r2r:
+    image: sciphi/r2r:latest
+    container_name: buywise-r2r
+    env_file:
+      - .env
+    ports:
+      - "7272:7272"
+    depends_on:
+      - qdrant
+
+volumes:
+  mongodb_data:
+  qdrant_data:
